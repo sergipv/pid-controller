@@ -1,98 +1,41 @@
-# CarND-Controls-PID
-Self-Driving Car Engineer Nanodegree Program
+# Control theory - Introduction
 
----
+A controller is a system that manages the behavior of other devices (or systems) using control loops. A control can be binary (on/off, in a thermostate for example), or have more complex values (adding gas to a car).
 
-## Dependencies
+The theory behind continuosly operating dynamic systems is called control theory, and has as an objective to develp a control model for controlling dynamical systems. In general, we want the control to be stable, optimal and robust.
 
-* cmake >= 3.5
- * All OSes: [click here for installation instructions](https://cmake.org/install/)
-* make >= 4.1(mac, linux), 3.81(Windows)
-  * Linux: make is installed by default on most Linux distros
-  * Mac: [install Xcode command line tools to get make](https://developer.apple.com/xcode/features/)
-  * Windows: [Click here for installation instructions](http://gnuwin32.sourceforge.net/packages/make.htm)
-* gcc/g++ >= 5.4
-  * Linux: gcc / g++ is installed by default on most Linux distros
-  * Mac: same deal as make - [install Xcode command line tools]((https://developer.apple.com/xcode/features/)
-  * Windows: recommend using [MinGW](http://www.mingw.org/)
-* [uWebSockets](https://github.com/uWebSockets/uWebSockets)
-  * Run either `./install-mac.sh` or `./install-ubuntu.sh`.
-  * If you install from source, checkout to commit `e94b6e1`, i.e.
-    ```
-    git clone https://github.com/uWebSockets/uWebSockets 
-    cd uWebSockets
-    git checkout e94b6e1
-    ```
-    Some function signatures have changed in v0.14.x. See [this PR](https://github.com/udacity/CarND-MPC-Project/pull/3) for more details.
-* Simulator. You can download these from the [project intro page](https://github.com/udacity/self-driving-car-sim/releases) in the classroom.
+A feedback control loop happens when the control output depends on some error from some measurement of the dynamical system we are trying to control. For example, if we have an inverted pendulum, we want to mantain the pendulum in an upright position by moving the vehicle the pendulum is on. The error can be the angle difference between the upright and the current position of the pendulum. The higher the error, the more control signal.
 
-There's an experimental patch for windows in this [PR](https://github.com/udacity/CarND-PID-Control-Project/pull/3)
 
-## Basic Build Instructions
+## PID Feedback control
 
-1. Clone this repo.
-2. Make a build directory: `mkdir build && cd build`
-3. Compile: `cmake .. && make`
-4. Run it: `./pid`. 
+PID feedback control is a control loop using different types of errors to scale the control signal. PID stands for proportional-integral-derivative, and basically adds a control proportional to three errors:
 
-Tips for setting up your environment can be found [here](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/f758c44c-5e40-4e01-93b5-1a82aa4e044f/concepts/23d376c7-0195-4276-bdf0-e02f1f3c665d)
+- Proportional error: difference between an expected value and current value.
+- Integral error: sum of all previous proportional errors.
+- Differential error: change of error with time.
 
-## Editor Settings
+For the current project, I simplified the values of the integral (since we have discrete increments of time) and differential error. For the integral error, I am also ignoring the integral windup given the limited amount of time the project is running; there are different solutions (only integrate in a certain window of time, reset the value and disable the integral function, ...). For the differential error the simplification is assuming that the derivative is the difference between current and past error. 
 
-We've purposefully kept editor configuration files out of this repo in order to
-keep it as simple and environment agnostic as possible. However, we recommend
-using the following settings:
+As a note, the derivative term provides damping of the control signal (to prevent unstability from the proportional term) and the integral term eliminates offset created by the proportional term.
 
-* indent using spaces
-* set tab width to 2 spaces (keeps the matrices in source code aligned)
+In the current project, the controller for the steering function was implemented as a PID controller, while the throttle controller was implemented as a PD controller, since the cummulative error can affect negatively the speed of the car (unless we bound the time or value of the integral error).
 
-## Code Style
+A few considerations were made:
 
-Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
+- Steering value is bounded to [-1, 1].
+- Since I am not resetting the integral error, if the track of the simulator is more prone to turn to one direction (left more often than right), the error will tend to be towards the right side (overshoots positively). Therefore, the correction when the car is on the left side is slower (integral term is still positive), until the value is corrected.
+- I added a second controller to try to speed up the velocity. I did not use any other signal than the error with respect the center of the road (we could potentially consider speed and angle). The result is that the car reaches up to 70mph with the current configuration. 
 
-## Project Instructions and Rubric
+## Compiling and executing the project
 
-Note: regardless of the changes you make, your project must be buildable using
-cmake and make!
+- Clone the repo and cd to it on a Terminal.
+- Create the build directory: `mkdir build`.
+- `cd build`
+- `cmake ..`
+- `make`: This will create the executable `pid`, that contains a particle filter implementation implementation.
 
-More information is only accessible by people who are already enrolled in Term 2
-of CarND. If you are enrolled, see [the project page](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/f1820894-8322-4bb3-81aa-b26b3c6dcbaf/lessons/e8235395-22dd-4b87-88e0-d108c5e5bbf4/concepts/6a4d8d42-6a04-4aa6-b284-1697c0fd6562)
-for instructions and the project rubric.
+`pid` communicates with a Udacity simulator that reads the input data and produces estimations for the object. See [Udacity's seed project](https://github.com/udacity/CarND-Kidnapped-Vehicle-Project) for more information on how to install the simulator.
 
-## Hints!
-
-* You don't have to follow this directory structure, but if you do, your work
-  will span all of the .cpp files here. Keep an eye out for TODOs.
-
-## Call for IDE Profiles Pull Requests
-
-Help your fellow students!
-
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to we ensure
-that students don't feel pressured to use one IDE or another.
-
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
-
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
-
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
-
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
-
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
-
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
+Open the simulator and run `./project-filter` to enable the connection. Select Project 4 from the simulator.
 
